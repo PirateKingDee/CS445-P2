@@ -14,8 +14,15 @@ import java.util.Scanner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.ListIterator;
+import org.lwjgl.input.Keyboard;
 
 public class Program2 {
+    
+//    List<Edge> global_edge;
+//    List<Edge> active_edge;
+//    List<Edge> all_edge;
     
     //method: start
     //purpose: start the program.
@@ -61,39 +68,15 @@ public class Program2 {
     //method: render
     //purpose: render drawings
     public void render(){
-        while(!Display.isCloseRequested()){
+        while(!Display.isCloseRequested()&&!Keyboard.isKeyDown(Keyboard.KEY_ESCAPE)){
             try{
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 glLoadIdentity();
                 
                 glColor3f(1f, 0f, 0f);
                 File file = new File("src/coordinates.txt");
-                Scanner readFile = new Scanner(file);
-                char state = 'p';
-                String[] colors = new String[3];
-                ArrayList<Float> x = new ArrayList<>();
-                ArrayList<Float> y = new ArrayList<>();
-                while(readFile.hasNextLine()){
-                    
-                    while(state == 'p' && readFile.hasNextLine()){
-                        String[] str = readFile.nextLine().split(" ");
-                        if(str[0].equals("P")){
-                            state = 'p';
-                            colors = Arrays.copyOfRange(str, 1, 4);
-                        }
-                        else if (str[0].equals("T")){
-                            state = 't';
-                        }
-                        else{
-                           x.add(Float.parseFloat(str[0]));
-                           y.add(Float.parseFloat(str[1]));
-                        }
-                    }
-                   
-                    glColor3f(Float.parseFloat(colors[0]),Float.parseFloat(colors[1]),Float.parseFloat(colors[2]));
-                    drawPolygon(x,y);
-   
-                }
+                readPolygon(file);
+                
                 Display.update();
                 Display.sync(60);
             }
@@ -102,6 +85,147 @@ public class Program2 {
             }     
         }    
         Display.destroy();
+    }
+    
+    public void readPolygon(File file){
+        LinkedList<Edge> all_edge;
+        try{
+            Scanner readFile = new Scanner(file);
+            String[] colors = new String[3];
+            char state = 'p';
+            ArrayList<Vertex> vertexList = new ArrayList<>();
+            while(readFile.hasNextLine()){
+                String readLine[] = readFile.nextLine().split(" ");
+                
+                if(state == 'p'){
+                    if(readLine[0].equals( "P")){
+                        colors = Arrays.copyOfRange(readLine, 1, 4);
+                        continue;
+                    }
+                    else if(readLine[0].equals( "T")){
+                        state = 't';
+                    }
+                    else{
+                        vertexList.add(new Vertex(Float.parseFloat(readLine[0]), Float.parseFloat(readLine[1])));
+                        continue;
+                    }
+                }
+                
+                all_edge = getAllEdgeTable(vertexList);
+                //figure transformation
+//                if(state == 't'){
+//                    if(readLine[0] == "P"){
+//                        state = 'p';
+//                        //file in figure, then update color
+//                    }
+//                    else if(readLine[0] == "T"){
+//                        continue;
+//                    }
+//                    
+//                }
+                //fill polygon
+                fillPolygon(all_edge);
+                }
+        }
+        catch(Exception e){
+            
+        }
+ 
+    }
+    
+    public void fillPolygon(LinkedList<Edge> allEdges){
+        LinkedList<Edge> global_edges;
+        LinkedList<Edge> active_edges = new LinkedList<>();
+        int parity = 0;
+        global_edges = getGlobalEdges(allEdges);
+        float scanLine = global_edges.getFirst().getMinYVertex().getY();
+        while(global_edges.peekFirst().getMinYVertex().getY() == scanLine){
+            active_edges.add(global_edges.removeFirst());
+        }
+        System.out.println("\nallEdge");
+        System.out.println(allEdges);
+        System.out.println();
+        System.out.println("\nglobal");
+        System.out.println(global_edges);
+        System.out.println();
+        System.out.println("\nactive");
+        System.out.println(active_edges);
+        
+    }
+    
+    public LinkedList<Edge> getGlobalEdges(LinkedList<Edge> allEdges){
+        LinkedList<Edge> globalEdges = new LinkedList<>();
+        boolean keepGoing;
+        if(allEdges.isEmpty()){
+            return null;
+        }
+        ListIterator<Edge> allEdgesList = allEdges.listIterator();
+        globalEdges.add(allEdgesList.next());
+        while(allEdgesList.hasNext()){
+            keepGoing = true;
+            Edge curEdge = allEdgesList.next();
+            if(curEdge.getSlope()==0){
+                continue;
+            }
+            ListIterator<Edge> globalEdgesList = globalEdges.listIterator();
+            while(globalEdgesList.hasNext()){
+                Edge curGlobalEdge = globalEdgesList.next();
+                if(curEdge.getMinYVertex().getY() <= curGlobalEdge.getMinYVertex().getY()){
+                    keepGoing = false;
+                    break;
+                }
+            }
+            if(keepGoing == true){
+                globalEdgesList.add(curEdge);
+            }
+            else{
+                //compare X value
+                Edge e = globalEdgesList.previous();
+                if(curEdge.getMinYVertex().getY() == e.getMinYVertex().getY()){
+                    float curEdgeX = curEdge.getMinYVertex().getX();
+                    float gloEdgeX = e.getMinYVertex().getX();
+                    if(curEdgeX == gloEdgeX){
+                        //compare Y-max value
+                        float curEdgeYMax = curEdge.getMaxYVertex().getY();
+                        float gloEdgeYMax = e.getMaxYVertex().getY();
+                        if(curEdgeYMax < gloEdgeYMax){
+                           globalEdgesList.add(curEdge); 
+                        }
+                        else{
+                            globalEdgesList.next();
+                            globalEdgesList.add(curEdge);
+                        }
+                    }
+                    else if (curEdgeX < gloEdgeX){
+                        globalEdgesList.add(curEdge);
+                    }
+                    else{
+                        globalEdgesList.next();
+                        globalEdgesList.add(curEdge);
+                    }
+                    
+                }
+                else{
+                    globalEdgesList.add(curEdge);
+                }
+            }
+            
+        }
+        return globalEdges;  
+    }
+    
+    public LinkedList<Edge> getAllEdgeTable(ArrayList<Vertex> vertexList){
+        LinkedList<Edge> all_edge = new LinkedList<>();
+        Vertex first = vertexList.get(0);
+        for(int i = 0; i < vertexList.size(); i++){
+            if(i == vertexList.size()-1){
+                all_edge.add(new Edge(vertexList.get(i), first));
+            }
+            else {
+                all_edge.add(new Edge(vertexList.get(i), vertexList.get(i+1)));
+            }
+        }
+        return all_edge;
     }
     
     public void drawPolygon(ArrayList<Float> x, ArrayList<Float> y){
@@ -444,6 +568,8 @@ public class Program2 {
         return 2 * dx;
     }
     
+   
+    
     /**
      * @param args the command line arguments
      */
@@ -451,6 +577,10 @@ public class Program2 {
         // TODO code application logic here
         Program2 p2 = new Program2();
         p2.start();
+//        System.out.println(p2.getAllEdgeTable());
+//        
+//        System.out.println();
+//        System.out.println(p2.getGlobalEdgeTable());
     }
 
 }
