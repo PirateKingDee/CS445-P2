@@ -88,7 +88,7 @@ public class Program2 {
     }
     
     public void readPolygon(File file){
-        LinkedList<Edge> all_edge;
+        LinkedList<Edge> all_edge = new LinkedList<>();
         try{
             Scanner readFile = new Scanner(file);
             String[] colors = new String[3];
@@ -110,8 +110,8 @@ public class Program2 {
                         continue;
                     }
                 }
-                
-                all_edge = getAllEdgeTable(vertexList);
+            }
+            all_edge.addAll(getAllEdgeTable(vertexList));
                 //figure transformation
 //                if(state == 't'){
 //                    if(readLine[0] == "P"){
@@ -123,13 +123,17 @@ public class Program2 {
 //                    }
 //                    
 //                }
+                drawPolygon(all_edge);
                 //fill polygon
+                //glColor3f(1,0,0);
                 fillPolygon(all_edge);
-                }
+                
+                
         }
         catch(Exception e){
             
         }
+        //return all_edge;
  
     }
     
@@ -139,8 +143,54 @@ public class Program2 {
         int parity = 0;
         global_edges = getGlobalEdges(allEdges);
         float scanLine = global_edges.getFirst().getMinYVertex().getY();
-        while(global_edges.peekFirst().getMinYVertex().getY() == scanLine){
+        while(!global_edges.isEmpty() && global_edges.peekFirst().getMinYVertex().getY() == scanLine){
             active_edges.add(global_edges.removeFirst());
+        }
+        
+        //start filling
+        while(!active_edges.isEmpty()){
+            System.out.println("whole");
+            while(!global_edges.isEmpty() && global_edges.peekFirst().getMinYVertex().getY() == scanLine){
+                System.out.println("remove global");
+                active_edges.add(global_edges.removeFirst());
+            }
+            ListIterator<Edge> activeEdgesList = active_edges.listIterator();
+            while(activeEdgesList.hasNext()){
+                System.out.println("In remove active");
+                if(activeEdgesList.next().getMaxYVertex().getY() == scanLine){
+                    activeEdgesList.remove();
+                }
+            }
+            activeEdgesList = active_edges.listIterator();
+            float nextX;
+            float curX = 0;
+            while(activeEdgesList.hasNext()){
+                
+                nextX = activeEdgesList.next().getMinYVertex().getX();
+                while(curX < nextX){
+                    System.out.println("In next X");
+                    if(parity == 1){
+                        draw(curX, scanLine);
+                    }
+                    curX += 1;
+                }
+                if(parity == 1){
+                    parity = 0;
+                }
+                else{
+                    parity = 1;
+                }
+                draw(curX, scanLine);
+            }
+            scanLine += 1;
+            activeEdgesList = active_edges.listIterator();
+            while(activeEdgesList.hasNext()){
+                Edge edge = activeEdgesList.next();
+                edge.getMinYVertex().setX(edge.getMinYVertex().getX()+edge.getSlopeRecipical());
+                System.out.println("In update X");
+            }
+            //Sort active_edge base on x
+            active_edges = new LinkedList<Edge>(sortEdgesByX(active_edges));
         }
         System.out.println("\nallEdge");
         System.out.println(allEdges);
@@ -228,14 +278,10 @@ public class Program2 {
         return all_edge;
     }
     
-    public void drawPolygon(ArrayList<Float> x, ArrayList<Float> y){
-        for(int i = 0; i < x.size(); i++){
-            if(i == x.size()-1){
-                drawLine(x.get(i), y.get(i), x.get(0), y.get(0));
-            }
-            else{
-                drawLine(x.get(i), y.get(i), x.get(i+1), y.get(i+1));
-            }
+    public void drawPolygon(LinkedList<Edge> allEdgeTable){
+        glColor3f(0,1,0);
+        for(Edge e : allEdgeTable){
+            drawLine(e.getMinYVertex().getX(), e.getMinYVertex().getY(), e.getMaxYVertex().getX(), e.getMaxYVertex().getY());
         }
     }
     private void drawLine(float x1, float y1, float x2, float y2){
@@ -568,7 +614,34 @@ public class Program2 {
         return 2 * dx;
     }
     
-   
+    public LinkedList<Edge> sortEdgesByX(LinkedList<Edge> edges){
+        LinkedList<Edge> sortedEdge = new LinkedList<>();
+        ListIterator<Edge> iterator = edges.listIterator();	//Auxillary Space: O(n)  Time: O(1)
+        while(iterator.hasNext()){		//Time: O(n)
+            Edge edge = iterator.next(); 	//Auxillary Space: O(1), Time: O(1)
+            if(sortedEdge.isEmpty()){	//Auxillary Space: O(1), Time: O(1)
+                    sortedEdge.add(edge);	//Auxillary Space: O(1), Time: O(1)
+                    continue;
+            }
+            else{
+                ListIterator<Edge> second_iterator = sortedEdge.listIterator();	//Auxillary Space: O(n), Time: O(1)
+                boolean inserted = false;	//Auxillary Space: O(1), Time: O(1)
+                while(second_iterator.hasNext()){	//Auxillary Space: O(1), Time: O(n)
+                        Edge curEdge = second_iterator.next();
+                        if(edge.getMinYVertex().getX()< curEdge.getMinYVertex().getX()){	
+                                second_iterator.previous();
+                                second_iterator.add(edge);	
+                                inserted = true;			
+                                break;
+                        }
+                }
+                if(inserted == false){				
+                        second_iterator.add(edge);		
+                }
+            }
+        }
+        return sortedEdge;
+    }
     
     /**
      * @param args the command line arguments
