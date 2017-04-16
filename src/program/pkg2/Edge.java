@@ -50,6 +50,10 @@ public class Edge {
         return dx/dy;
     }
     
+    public void setXValue(float x){
+        getMinYVertex().setX(x);
+    }
+    
     @Override
     public String toString(){
         return "\nY-min: "+getMinYVertex().getY()+"\nY-max: "+getMaxYVertex().getY()+"\nX-Val: "+getMinYVertex().getX()+"\n1/m: "+getSlopeRecipical()+" ";

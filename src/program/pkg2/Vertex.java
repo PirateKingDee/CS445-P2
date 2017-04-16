@@ -23,6 +23,9 @@ public class Vertex {
     public float getY(){
         return y;
     }
+    public void setX(float x){
+        this.x = x;
+    }
 //    public int compareX(Vertex v){
 //        if(x > v.getX()) return 1;
 //        else if( x < v.getX()) return -1;
