@@ -47,6 +47,9 @@ public class Edge {
     
     public float getSlopeRecipical(){
         //except dy = 0
+        if(dy == 0){
+            return Float.MAX_VALUE;
+        }
         return dx/dy;
     }
     
