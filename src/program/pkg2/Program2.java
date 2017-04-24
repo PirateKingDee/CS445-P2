@@ -14,15 +14,14 @@ import java.util.Scanner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.TreeMap;
 import org.lwjgl.input.Keyboard;
 
 public class Program2 {
-    
-//    List<Edge> global_edge;
-//    List<Edge> active_edge;
-//    List<Edge> all_edge;
     
     //method: start
     //purpose: start the program.
@@ -45,8 +44,7 @@ public class Program2 {
     public void createWindow() throws LWJGLException{
         Display.setFullscreen(false);
         Display.setDisplayMode(new DisplayMode(640,480));
-        Display.setTitle("Program 2");
-        
+        Display.setTitle("Program 2");       
         Display.create();
         
     }
@@ -58,8 +56,8 @@ public class Program2 {
         
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        
-        glOrtho(0, 640, 0, 480, 1, -1);
+        //origin in center
+        glOrtho(-320, 320, -240, 240, 1, -1);
         
         glMatrixMode(GL_MODELVIEW);
         glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
@@ -68,15 +66,32 @@ public class Program2 {
     //method: render
     //purpose: render drawings
     public void render(){
+        HashMap<ArrayList<Vertex>,ArrayList<String>> polygon = null;
+        try{
+            File file = new File("src/coordinates.txt");
+            //readPolygon(file);
+            polygon = readPolygon(file);
+        }
+        catch(Exception e){
+            
+        }
         while(!Display.isCloseRequested()&&!Keyboard.isKeyDown(Keyboard.KEY_ESCAPE)){
+            Iterator<ArrayList<Vertex>> polygonIterator = polygon.keySet().iterator();
             try{
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 glLoadIdentity();
+                while(polygonIterator.hasNext()){
+                    ArrayList<Vertex> vertexList = polygonIterator.next();
+                    ArrayList<String> atr = polygon.get(vertexList);
+                    String[] color = atr.remove(0).split(" ");
+                    glColor3f(Float.parseFloat(color[1]), Float.parseFloat(color[2]), Float.parseFloat(color[3]));
+                    vertexList = transformation(vertexList, atr);
+                    //Fill polygon alogorithm failed. Need to fix. Probably sorting went wrong
+                    fillPolygon(getAllEdgeTable(vertexList));
+                    //drawPolygon(getAllEdgeTable(vertexList));
+                }
                 
-                glColor3f(1f, 0f, 0f);
-                File file = new File("src/coordinates.txt");
-                readPolygon(file);
-                
+
                 Display.update();
                 Display.sync(60);
             }
@@ -87,19 +102,48 @@ public class Program2 {
         Display.destroy();
     }
     
-    public void readPolygon(File file){
-        LinkedList<Edge> all_edge = new LinkedList<>();
+    public ArrayList<Vertex> transformation(ArrayList<Vertex> vertexList, ArrayList<String> transforms){
+        for(int i = 0; i < transforms.size(); i++){
+            String[] curTransform = transforms.get(i).split(" ");
+            char type = curTransform[0].charAt(0);
+            switch(type){
+                case 'r': 
+                    for(int j = 0; j < vertexList.size(); j++){
+                        vertexList.set(j, rotate(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2]),Float.parseFloat(curTransform[3])));        
+                    }
+                    break;
+                case 't':
+                    for(int j = 0; j < vertexList.size(); j++){
+                        vertexList.set(j, translate(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2])));        
+                    }
+                    break;
+                case 's':
+                    for(int j = 0; j < vertexList.size(); j++){
+                        vertexList.set(j, scale(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2]),Float.parseFloat(curTransform[3]),Float.parseFloat(curTransform[4])));        
+                    }
+                    break;
+            }
+        }
+        return vertexList;
+    }
+    public HashMap<ArrayList<Vertex>,ArrayList<String>> readPolygon(File file){
+        //LinkedList<Edge> all_edge = new LinkedList<>();
+        HashMap<ArrayList<Vertex>,ArrayList<String>> polygon = new HashMap<>();
+        ArrayList<Vertex> vertexList = new ArrayList<>();
+        ArrayList<String> atr = null;
         try{
             Scanner readFile = new Scanner(file);
-            String[] colors = new String[3];
-            char state = 'p';
-            ArrayList<Vertex> vertexList = new ArrayList<>();
+            //String[] colors = new String[3];
+            char state = 'p';           
             while(readFile.hasNextLine()){
-                String readLine[] = readFile.nextLine().split(" ");
+                String line = readFile.nextLine();
+                String readLine[] = line.split(" ");
                 
                 if(state == 'p'){
                     if(readLine[0].equals( "P")){
-                        colors = Arrays.copyOfRange(readLine, 1, 4);
+                        //colors = Arrays.copyOfRange(readLine, 1, 4);
+                        atr = new ArrayList<>();
+                        atr.add(line);
                         continue;
                     }
                     else if(readLine[0].equals( "T")){
@@ -110,31 +154,32 @@ public class Program2 {
                         continue;
                     }
                 }
+                if(state == 't'){
+                    if(readLine[0].equals("T")){
+                        continue;
+                    }
+                    else if(readLine[0].equals("P")){
+                        state = 'p';
+                        polygon.put(vertexList, atr);
+                        atr = new ArrayList<String>();
+                        vertexList = new ArrayList<Vertex>();
+                        atr.add(line);
+                    }
+                    else{
+                        atr.add(line);
+                    }
+                }
             }
-            all_edge.addAll(getAllEdgeTable(vertexList));
-                //figure transformation
-//                if(state == 't'){
-//                    if(readLine[0] == "P"){
-//                        state = 'p';
-//                        //file in figure, then update color
-//                    }
-//                    else if(readLine[0] == "T"){
-//                        continue;
-//                    }
-//                    
-//                }
-                drawPolygon(all_edge);
-                //fill polygon
-                //glColor3f(1,0,0);
-                fillPolygon(all_edge);
-                
+            polygon.put(vertexList,atr);
+            
                 
         }
         catch(Exception e){
-            
+            e.printStackTrace();
         }
-        //return all_edge;
- 
+
+
+        return polygon;
     }
     
     public void fillPolygon(LinkedList<Edge> allEdges){
@@ -205,6 +250,16 @@ public class Program2 {
     
     public LinkedList<Edge> getGlobalEdges(LinkedList<Edge> allEdges){
         LinkedList<Edge> globalEdges = new LinkedList<>();
+//        ListIterator<Edge> allEdgeList = allEdges.listIterator();
+//        while(allEdgeList.hasNext()){
+//            Edge curEdge = allEdgeList.next();
+//            if(curEdge.getSlope()!= 0){
+//                globalEdges.add(curEdge);
+//            }
+//        }
+//        return sortEdgesByYmin(globalEdges);
+        
+        
         boolean keepGoing;
         if(allEdges.isEmpty()){
             return null;
@@ -278,8 +333,34 @@ public class Program2 {
         return all_edge;
     }
     
+    public Vertex translate(Vertex v, float x, float y){
+        Matrix translateMatrix = new Matrix();
+        translateMatrix.getTranslateMatrix(x, y);
+        Matrix vertexMatrix = new Matrix();
+        vertexMatrix.getVertexMatrix(v.getX(), v.getY());
+        Matrix after = translateMatrix.multiplication(vertexMatrix);
+        System.out.println(after.toString());
+        return new Vertex(after.getMatrix()[0][0], after.getMatrix()[1][0]);
+    }
+    public Vertex rotate(Vertex v, float degree, float pivotX, float pivotY){
+        Matrix rotationMatrix = new Matrix();
+        Matrix vertexMatrix = new Matrix();
+        rotationMatrix.getRotationMatrix(degree);
+        vertexMatrix.getVertexMatrix(v.getX(), v.getY());
+        Matrix after = rotationMatrix.multiplication(vertexMatrix);
+        return new Vertex(after.getMatrix()[0][0], after.getMatrix()[1][0]);
+    }
+    public Vertex scale(Vertex v, float x, float y, float pivotX, float pivotY){
+        Matrix scaleMatrix = new Matrix();
+        Matrix vertexMatrix = new Matrix();
+        scaleMatrix.getScaleMatrix(x, y);
+        vertexMatrix.getVertexMatrix(v.getX(), v.getY());
+        Matrix after = scaleMatrix.multiplication(vertexMatrix);
+        return new Vertex(after.getMatrix()[0][0], after.getMatrix()[1][0]);
+    }
+    
     public void drawPolygon(LinkedList<Edge> allEdgeTable){
-        glColor3f(0,1,0);
+        //glColor3f(0,1,0);
         for(Edge e : allEdgeTable){
             drawLine(e.getMinYVertex().getX(), e.getMinYVertex().getY(), e.getMaxYVertex().getX(), e.getMaxYVertex().getY());
         }
@@ -629,6 +710,35 @@ public class Program2 {
                 while(second_iterator.hasNext()){	//Auxillary Space: O(1), Time: O(n)
                         Edge curEdge = second_iterator.next();
                         if(edge.getMinYVertex().getX()< curEdge.getMinYVertex().getX()){	
+                                second_iterator.previous();
+                                second_iterator.add(edge);	
+                                inserted = true;			
+                                break;
+                        }
+                }
+                if(inserted == false){				
+                        second_iterator.add(edge);		
+                }
+            }
+        }
+        return sortedEdge;
+    }
+    
+    public LinkedList<Edge> sortEdgesByYmin(LinkedList<Edge> edges){
+        LinkedList<Edge> sortedEdge = new LinkedList<>();
+        ListIterator<Edge> iterator = edges.listIterator();	//Auxillary Space: O(n)  Time: O(1)
+        while(iterator.hasNext()){		//Time: O(n)
+            Edge edge = iterator.next(); 	//Auxillary Space: O(1), Time: O(1)
+            if(sortedEdge.isEmpty()){	//Auxillary Space: O(1), Time: O(1)
+                    sortedEdge.add(edge);	//Auxillary Space: O(1), Time: O(1)
+                    continue;
+            }
+            else{
+                ListIterator<Edge> second_iterator = sortedEdge.listIterator();	//Auxillary Space: O(n), Time: O(1)
+                boolean inserted = false;	//Auxillary Space: O(1), Time: O(1)
+                while(second_iterator.hasNext()){	//Auxillary Space: O(1), Time: O(n)
+                        Edge curEdge = second_iterator.next();
+                        if(edge.getMinYVertex().getY()< curEdge.getMinYVertex().getY()){	
                                 second_iterator.previous();
                                 second_iterator.add(edge);	
                                 inserted = true;			
