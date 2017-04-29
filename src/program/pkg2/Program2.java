@@ -100,7 +100,7 @@ public class Program2 {
                     //get the transformation list of the polygon
                     ArrayList<String> atr = polygon.get(vertexList);
                     //get the color from the first string of the transformation list
-                    String[] color = atr.remove(0).split(" ");
+                    String[] color = atr.get(0).split(" ");
                     //set the color
                     glColor3f(Float.parseFloat(color[1]), Float.parseFloat(color[2]), Float.parseFloat(color[3]));
                     //transform the all vertex
@@ -121,7 +121,8 @@ public class Program2 {
     //method: transformation
     //purpose: transform a list of vertexs and return the new vertexs
     public ArrayList<Vertex> transformation(ArrayList<Vertex> vertexList, ArrayList<String> transforms){
-        for(int i = 0; i < transforms.size(); i++){
+        ArrayList<Vertex> transformed = new ArrayList<Vertex>();
+        for(int i = 1; i < transforms.size(); i++){
             //split the string to string array
             String[] curTransform = transforms.get(i).split(" ");
             //get the first character of the string array
@@ -130,20 +131,26 @@ public class Program2 {
             switch(type){
                 case 'r': 
                     for(int j = 0; j < vertexList.size(); j++){
-                        vertexList.set(j, rotate(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2]),Float.parseFloat(curTransform[3])));        
+                        transformed.add(rotate(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2]),Float.parseFloat(curTransform[3])));
+                        //vertexList.set(j, rotate(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2]),Float.parseFloat(curTransform[3])));        
                     }
                     break;
                 case 't':
                     for(int j = 0; j < vertexList.size(); j++){
-                        vertexList.set(j, translate(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2])));        
+                        transformed.add(translate(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2])));
+                        //vertexList.set(j, translate(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2])));        
                     }
                     break;
                 case 's':
                     for(int j = 0; j < vertexList.size(); j++){
-                        vertexList.set(j, scale(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2]),Float.parseFloat(curTransform[3]),Float.parseFloat(curTransform[4])));        
+                        transformed.add(scale(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2]),Float.parseFloat(curTransform[3]),Float.parseFloat(curTransform[4])));
+                        //vertexList.set(j, scale(vertexList.get(j),Float.parseFloat(curTransform[1]),Float.parseFloat(curTransform[2]),Float.parseFloat(curTransform[3]),Float.parseFloat(curTransform[4])));        
                     }
                     break;
+                default: break;
             }
+            vertexList = transformed;
+            transformed = new ArrayList<>();
         }
         return vertexList;
     }
